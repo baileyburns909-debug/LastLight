@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#08090c">
+<link rel="manifest" href="manifest.json">
+<title>LAST LIGHT — Survival</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050609;color:#eee;font-family:Inter,system-ui,Arial,sans-serif}
+body{touch-action:none}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050609}
+canvas{display:block;width:100vw;height:100vh;max-width:560px;max-height:100vh;background:#0a0c0e}
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;z-index:20}
+.panel{width:min(470px,92vw);background:linear-gradient(180deg,#11141a,#0b0d12);border:1px solid #292e39;border-radius:22px;padding:26px;box-shadow:0 24px 80px #000b}
+.logo{font-size:44px;line-height:.9;font-weight:1000;letter-spacing:5px}
+.logo b{color:#ff3b3b}
+.sub{color:#8e98a8;font-size:11px;letter-spacing:3px;margin-top:10px}
+.story{margin:22px 0;color:#c3c9d2;line-height:1.55;font-size:14px}
+.btn{width:100%;border:0;border-radius:13px;padding:16px;margin-top:10px;font-weight:900;letter-spacing:1px;color:#fff;background:#c92f35;box-shadow:0 8px 25px #c92f3530}
+.btn:active{transform:scale(.98)}
+.btn.alt{background:#1a1e26;border:1px solid #303642;color:#dbe0e8}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.stat{background:#0a0c10;border:1px solid #252a33;border-radius:12px;padding:12px}
+.stat small{display:block;color:#747e8e;font-size:10px;text-transform:uppercase;letter-spacing:1px}
+.stat strong{font-size:18px}
+#hud{position:absolute;inset:0;z-index:5;pointer-events:none;display:none}
+.top{position:absolute;left:12px;right:12px;top:10px;display:flex;justify-content:space-between;align-items:flex-start}
+.badge{background:#090b0fcf;border:1px solid #303640;border-radius:12px;padding:8px 11px;backdrop-filter:blur(8px)}
+.badge small{display:block;color:#747e8e;font-size:9px;letter-spacing:1px}
+.badge strong{font-size:15px}
+#healthBox{position:absolute;left:12px;bottom:142px;width:170px}
+.bar{height:10px;background:#191d24;border-radius:8px;overflow:hidden;border:1px solid #343945}
+#hp{height:100%;background:#e44a4a;width:100%}
+#ammo{position:absolute;right:12px;bottom:142px;text-align:right}
+#weaponName{font-weight:1000;font-size:18px}
+#mission{position:absolute;top:72px;left:50%;transform:translateX(-50%);width:max-content;max-width:86vw;text-align:center;background:#0a0d12df;border:1px solid #303641;border-radius:12px;padding:9px 13px;color:#e6e9ee;font-size:12px}
+#toast{position:absolute;top:118px;left:50%;transform:translateX(-50%);background:#d53a40;color:#fff;font-weight:900;border-radius:999px;padding:8px 14px;opacity:0;transition:.15s}
+#controls{position:absolute;inset:0;z-index:8;display:none;pointer-events:none}
+#stick{position:absolute;left:18px;bottom:22px;width:126px;height:126px;border-radius:50%;background:#ffffff0b;border:1px solid #ffffff18;pointer-events:auto}
+#knob{position:absolute;left:38px;top:38px;width:50px;height:50px;border-radius:50%;background:#ffffff18;border:1px solid #ffffff2b}
+.actions{position:absolute;right:16px;bottom:20px;width:160px;height:145px;pointer-events:none}
+.ab{position:absolute;width:68px;height:68px;border-radius:50%;border:1px solid #ffffff28;background:#11151dcc;color:#fff;font-size:10px;font-weight:1000;pointer-events:auto}
+.ab:active{background:#292f3a}
+#fire{right:0;bottom:0;width:86px;height:86px;background:#b92f36e8;font-size:13px}
+#reload{right:80px;bottom:45px}
+#dash{right:6px;bottom:92px}
+#swap{left:8px;bottom:2px}
+#pause{position:absolute;right:12px;top:62px;width:40px;height:40px;border-radius:12px;border:1px solid #343944;background:#0a0d12d9;color:#fff;pointer-events:auto}
+#pauseScreen{display:none}
+#shop{display:none}
+.shopGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}
+.buy{background:#151922;border:1px solid #2d3340;color:#fff;border-radius:13px;padding:14px;text-align:left}
+.buy strong{display:block}
+.buy small{color:#8993a2;display:block;margin-top:5px;line-height:1.35}
+.price{color:#ffc34d;font-weight:900;display:block;margin-top:8px}
+.kicker{font-size:11px;color:#7f8998;letter-spacing:2px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+
+<div id="menu" class="screen">
+ <div class="panel">
+  <div class="logo">LAST <b>LIGHT</b></div>
+  <div class="sub">NIGHTFALL SURVIVAL</div>
+  <p class="story">The city went dark six nights ago. You are one of the few still moving. Scavenge, fight through infected streets, recover supplies and make it back before the lights go out.</p>
+  <button class="btn" id="start">START RUN</button>
+  <button class="btn alt" id="how">HOW TO PLAY</button>
+  <div class="stats">
+   <div class="stat"><small>Best Night</small><strong id="best">0</strong></div>
+   <div class="stat"><small>Total Kills</small><strong id="totalKills">0</strong></div>
+  </div>
+ </div>
+</div>
+
+<div id="shop" class="screen">
+ <div class="panel">
+  <div class="kicker">SAFEHOUSE</div>
+  <h1 style="margin:5px 0 0">Patch up. Gear up.</h1>
+  <div id="cashShop" style="margin-top:7px;color:#ffc34d;font-weight:900"></div>
+  <div class="shopGrid">
+   <button class="buy" data-buy="med"><strong>MEDKIT</strong><small>Restore 35 health.</small><span class="price">$45</span></button>
+   <button class="buy" data-buy="damage"><strong>HOT LOADS</strong><small>Permanent +12% weapon damage.</small><span class="price">$90</span></button>
+   <button class="buy" data-buy="speed"><strong>LIGHT FEET</strong><small>Permanent +8% movement speed.</small><span class="price">$90</span></button>
+   <button class="buy" data-buy="mag"><strong>EXTENDED MAG</strong><small>Permanent +3 magazine size.</small><span class="price">$110</span></button>
+  </div>
+  <button class="btn" id="nextNight">GO INTO THE NIGHT</button>
+ </div>
+</div>
+
+<div id="gameOver" class="screen" style="display:none">
+ <div class="panel">
+  <div class="kicker">RUN ENDED</div><h1 style="font-size:38px;margin:5px 0">YOU'RE DEAD</h1>
+  <div class="stats">
+   <div class="stat"><small>Night</small><strong id="finalNight">1</strong></div>
+   <div class="stat"><small>Kills</small><strong id="finalKills">0</strong></div>
+   <div class="stat"><small>Cash</small><strong id="finalCash">$0</strong></div>
+   <div class="stat"><small>Score</small><strong id="finalScore">0</strong></div>
+  </div>
+  <button class="btn" id="again">RUN IT BACK</button>
+ </div>
+</div>
+
+<div id="pauseScreen" class="screen">
+ <div class="panel"><div class="kicker">PAUSED</div><h1>Catch your breath.</h1><button class="btn" id="resume">RESUME</button><button class="btn alt" id="quit">QUIT RUN</button></div>
+</div>
+
+<div id="hud">
+ <div class="top">
+  <div class="badge"><small>NIGHT</small><strong id="night">1</strong></div>
+  <div class="badge"><small>CASH</small><strong id="cash">$0</strong></div>
+  <div class="badge"><small>KILLS</small><strong id="kills">0</strong></div>
+ </div>
+ <div id="mission">GET TO THE EXTRACTION VAN</div>
+ <div id="toast">LOW AMMO</div>
+ <div id="healthBox"><div style="font-size:10px;margin-bottom:4px;color:#9ba4b2">HEALTH</div><div class="bar"><div id="hp"></div></div></div>
+ <div id="ammo"><div id="weaponName">PISTOL</div><div><strong id="clip">12</strong> / <span id="reserve">72</span></div></div>
+ <button id="pause">Ⅱ</button>
+</div>
+
+<div id="controls">
+ <div id="stick"><div id="knob"></div></div>
+ <div class="actions">
+  <button class="ab" id="reload">RELOAD</button>
+  <button class="ab" id="dash">DASH</button>
+  <button class="ab" id="swap">SWAP</button>
+  <button class="ab" id="fire">FIRE</button>
+ </div>
+</div>
+
+<script>
+'use strict';
+const C=document.getElementById('game'),ctx=C.getContext('2d');
+let W=360,H=640,dpr=1,raf=0,last=0,mode='menu',paused=false;
+const keys={}; const pointer={x:0,y:0,down:false};
+let world,player,zombies=[],bullets=[],particles=[],pickups=[],decor=[],objective,cam={x:0,y:0};
+let night=1,kills=0,cash=0,score=0,spawnTimer=0,objectiveTimer=0,shake=0;
+let stats={best:+localStorage.getItem('ll_best')||0,total:+localStorage.getItem('ll_total')||0};
+let upgrades={damage:1,speed:1,mag:0};
+const weapons=[
+ {name:'PISTOL',damage:28,rate:280,mag:12,reserve:72,reload:850,speed:11,pellets:1,spread:0.02},
+ {name:'SHOTGUN',damage:20,rate:650,mag:6,reserve:36,reload:1100,speed:10,pellets:6,spread:.19},
+ {name:'SMG',damage:14,rate:105,mag:28,reserve:120,reload:1000,speed:12,pellets:1,spread:.10}
+];
+let weapon=0, ammo=[12,6,28], reserve=[72,36,120], lastShot=0,reloading=0,dashCd=0,invuln=0;
+
+function resize(){dpr=Math.min(2,devicePixelRatio||1); W=Math.min(560,innerWidth); H=innerHeight; C.width=W*dpr;C.height=H*dpr;C.style.width=W+'px';C.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key===' '){e.preventDefault();shoot()} if(e.key.toLowerCase()==='r')reload();if(e.key.toLowerCase()==='q')swap();if(e.key==='Escape')togglePause()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function resetRun(){
+ night=1;kills=0;cash=0;score=0;weapon=0;ammo=[12,6,28];reserve=[72,36,120];reloading=0;dashCd=0;
+ player={x:420,y:420,r:15,hp:100,maxhp:100,angle:0,stamina:100,flash:0};
+ upgrades={damage:1,speed:1,mag:0};
+ buildWorld(); startNight();
+}
+function buildWorld(){
+ world={w:2600,h:2200};
+ decor=[];zombies=[];bullets=[];particles=[];pickups=[];
+ // roads
+ for(let i=0;i<24;i++) decor.push({type:'building',x:80+(i%6)*410,y:80+Math.floor(i/6)*500,w:280,h:320});
+ for(let i=0;i<80;i++) decor.push({type:'car',x:Math.random()*2400+100,y:Math.random()*1900+100,a:Math.random()*6.28});
+ for(let i=0;i<90;i++) decor.push({type:'debris',x:Math.random()*2500+50,y:Math.random()*2100+50});
+ objective={x:2150,y:1750,type:'van',active:true};
+}
+function startNight(){
+ mode='play';paused=false;spawnTimer=0;objectiveTimer=0;player.x=350;player.y=350;player.hp=Math.min(player.maxhp,player.hp+25);
+ objective={x:2050+Math.random()*350,y:1550+Math.random()*450,type:'van',active:true};
+ document.getElementById('mission').textContent=`NIGHT ${night}: REACH THE EXTRACTION VAN`;
+ showGame();
+}
+function showGame(){menu.style.display='none';shop.style.display='none';gameOver.style.display='none';pauseScreen.style.display='none';hud.style.display='block';controls.style.display='block';}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.opacity=0,900)}
+function updateHUD(){
+ document.getElementById('night').textContent=night;document.getElementById('cash').textContent='$'+cash;document.getElementById('kills').textContent=kills;
+ document.getElementById('hp').style.width=Math.max(0,player.hp/player.maxhp*100)+'%';
+ document.getElementById('weaponName').textContent=weapons[weapon].name;
+ document.getElementById('clip').textContent=ammo[weapon];document.getElementById('reserve').textContent=reserve[weapon];
+}
+function spawnZombie(){
+ let side=Math.floor(Math.random()*4),x,y;
+ if(side===0){x=Math.random()*world.w;y=-40}else if(side===1){x=world.w+40;y=Math.random()*world.h}else if(side===2){x=Math.random()*world.w;y=world.h+40}else{x=-40;y=Math.random()*world.h}
+ let d=1+night*.11,r=Math.random();
+ let type=r<Math.min(.12+night*.015,.28)?'brute':r<.35?'runner':'walker';
+ let z= type==='brute'?{r:25,hp:150*d,speed:38+night*1.5,damage:18,worth:45}:type==='runner'?{r:12,hp:35*d,speed:100+night*3,damage:10,worth:25}:{r:17,hp:55*d,speed:57+night*2,damage:12,worth:15};
+ Object.assign(z,{x,y,type,hit:0,attack:0,phase:Math.random()*6.28});
+ zombies.push(z);
+}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function aimAngle(){
+ // Touch/mouse aim: if pointer is near right half use it; otherwise nearest zombie
+ if(pointer.down){let wx=pointer.x+cam.x,wy=pointer.y+cam.y;return Math.atan2(wy-player.y,wx-player.x)}
+ let best=null,bd=99999;for(const z of zombies){let d=dist(player,z);if(d<bd){bd=d;best=z}}
+ return best?Math.atan2(best.y-player.y,best.x-player.x):player.angle;
+}
+function shoot(){
+ if(mode!=='play'||paused||reloading)return;
+ const w=weapons[weapon],now=performance.now();
+ if(now-lastShot<w.rate)return;
+ if(ammo[weapon]<=0){toast('RELOAD');reload();return}
+ lastShot=now;ammo[weapon]--;player.angle=aimAngle();player.flash=1;shake=Math.min(8,shake+2);
+ for(let i=0;i<w.pellets;i++){
+  let a=player.angle+(Math.random()-.5)*w.spread;
+  bullets.push({x:player.x+Math.cos(a)*18,y:player.y+Math.sin(a)*18,vx:Math.cos(a)*w.speed*60,vy:Math.sin(a)*w.speed*60,life:800,damage:w.damage*upgrades.damage});
+ }
+ updateHUD();
+}
+function reload(){
+ if(mode!=='play'||paused||reloading)return;
+ const w=weapons[weapon];if(ammo[weapon]>=w.mag+upgrades.mag||reserve[weapon]<=0)return;
+ reloading=w.reload;toast('RELOADING');
+}
+function swap(){if(mode==='play'&&!reloading){weapon=(weapon+1)%weapons.length;toast(weapons[weapon].name);updateHUD()}}
+function dash(){
+ if(mode!=='play'||paused||dashCd>0)return;
+ let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
+ if(Math.hypot(joy.x,joy.y)>.1){dx=joy.x;dy=joy.y}
+ let l=Math.hypot(dx,dy)||1;player.x+=dx/l*150;player.y+=dy/l*150;player.x=Math.max(30,Math.min(world.w-30,player.x));player.y=Math.max(30,Math.min(world.h-30,player.y));
+ dashCd=1300;invuln=350;particlesBurst(player.x,player.y,12,'dash');shake=5;
+}
+function particlesBurst(x,y,n,type='blood'){
+ for(let i=0;i<n;i++){let a=Math.random()*6.28,s=30+Math.random()*120;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:250+Math.random()*350,size:2+Math.random()*3,type})}
+}
+function hurt(n){
+ if(invuln>0)return;player.hp-=n;player.flash=1;shake=8;particlesBurst(player.x,player.y,7);if(player.hp<=0)endRun();
+}
+function endRun(){
+ mode='over';stats.total+=kills;stats.best=Math.max(stats.best,night);localStorage.setItem('ll_best',stats.best);localStorage.setItem('ll_total',stats.total);
+ hud.style.display='none';controls.style.display='none';gameOver.style.display='flex';
+ finalNight.textContent=night;finalKills.textContent=kills;finalCash.textContent='$'+cash;finalScore.textContent=score;
+ document.getElementById('best').textContent=stats.best;document.getElementById('totalKills').textContent=stats.total;
+}
+function finishNight(){
+ mode='shop';hud.style.display='none';controls.style.display='none';shop.style.display='flex';cashShop.textContent=`CASH: $${cash}`;
+}
+function buy(kind){
+ let cost={med:45,damage:90,speed:90,mag:110}[kind];if(cash<cost){toast('NOT ENOUGH CASH');return}
+ cash-=cost;
+ if(kind==='med')player.hp=Math.min(player.maxhp,player.hp+35);
+ if(kind==='damage')upgrades.damage+=.12;
+ if(kind==='speed')upgrades.speed+=.08;
+ if(kind==='mag')upgrades.mag+=3;
+ cashShop.textContent=`CASH: $${cash}`;toast('PURCHASED');
+}
+document.querySelectorAll('.buy').forEach(b=>b.onclick=()=>buy(b.dataset.buy));
+start.onclick=resetRun;
+again.onclick=resetRun;
+nextNight.onclick=()=>{night++;finishObjective=false;startNight()};
+how.onclick=()=>alert('MOVE: drag the left stick. AIM: tap/hold the screen toward a target. FIRE: shoot. RELOAD: reload. DASH: dodge. SWAP: cycle weapons. Reach the extraction van after surviving the night. Loot cash, buy upgrades, and watch for runners and brutes.');
+pause.onclick=togglePause;resume.onclick=togglePause;quit.onclick=()=>{mode='menu';paused=false;hud.style.display='none';controls.style.display='none';pauseScreen.style.display='none';menu.style.display='flex'};
+
+function togglePause(){if(mode!=='play')return;paused=!paused;pauseScreen.style.display=paused?'flex':'none'}
+
+let joy={x:0,y:0,active:false};
+const stick=document.getElementById('stick'),knob=document.getElementById('knob');
+function joyMove(e){
+ const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+ let x=(e.clientX-cx)/50,y=(e.clientY-cy)/50,l=Math.hypot(x,y);if(l>1){x/=l;y/=l}
+ joy.x=x;joy.y=y;knob.style.transform=`translate(${x*38}px,${y*38}px)`;
+}
+stick.addEventListener('pointerdown',e=>{joy.active=true;stick.setPointerCapture(e.pointerId);joyMove(e)});
+stick.addEventListener('pointermove',e=>{if(joy.active)joyMove(e)});
+stick.addEventListener('pointerup',()=>{joy.active=false;joy.x=joy.y=0;knob.style.transform='translate(0,0)'});
+C.addEventListener('pointerdown',e=>{pointer.down=true;pointer.x=e.clientX;pointer.y=e.clientY;if(e.clientX>W*.35&&e.clientY<H*.78)shoot()});
+C.addEventListener('pointermove',e=>{pointer.x=e.clientX;pointer.y=e.clientY});
+C.addEventListener('pointerup',()=>pointer.down=false);
+fire.addEventListener('pointerdown',e=>{e.stopPropagation();shoot()});fire.addEventListener('pointerup',e=>e.stopPropagation());
+reload.addEventListener('pointerdown',e=>{e.stopPropagation();reload()});
+dash.addEventListener('pointerdown',e=>{e.stopPropagation();dash()});
+swap.addEventListener('pointerdown',e=>{e.stopPropagation();swap()});
+
+function update(dt){
+ if(mode!=='play'||paused)return;
+ if(reloading){reloading-=dt;if(reloading<=0){let w=weapons[weapon],need=(w.mag+upgrades.mag)-ammo[weapon],take=Math.min(need,reserve[weapon]);ammo[weapon]+=take;reserve[weapon]-=take;reloading=0}}
+ dashCd=Math.max(0,dashCd-dt);invuln=Math.max(0,invuln-dt);player.flash=Math.max(0,player.flash-dt/100);
+ let dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0);
+ if(Math.hypot(joy.x,joy.y)>.1){dx=joy.x;dy=joy.y}
+ let l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}
+ let sp=145*upgrades.speed;player.x+=dx*sp*dt/1000;player.y+=dy*sp*dt/1000;
+ player.x=Math.max(25,Math.min(world.w-25,player.x));player.y=Math.max(25,Math.min(world.h-25,player.y));
+ if(pointer.down&&pointer.x>W*.35)shoot();
+ // spawn pressure
+ spawnTimer-=dt;
+ let cap=Math.min(45,8+night*4);
+ if(spawnTimer<=0&&zombies.length<cap){spawnZombie();spawnTimer=Math.max(220,700-night*35)}
+ // bullets
+ for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.vx*dt/1000;b.y+=b.vy*dt/1000;b.life-=dt;if(b.life<=0||b.x<0||b.y<0||b.x>world.w||b.y>world.h){bullets.splice(i,1);continue}
+  let hit=false;
+  for(let j=zombies.length-1;j>=0;j--){let z=zombies[j];if(Math.hypot(b.x-z.x,b.y-z.y)<z.r+5){z.hp-=b.damage;z.hit=100;particlesBurst(b.x,b.y,3);bullets.splice(i,1);hit=true;if(z.hp<=0){kills++;cash+=z.worth;score+=z.worth*night;particlesBurst(z.x,z.y,z.type==='brute'?16:8);if(Math.random()<.08)pickups.push({x:z.x,y:z.y,type:'ammo'});zombies.splice(j,1)}break}}
+ }
+ // zombies
+ for(const z of zombies){z.hit=Math.max(0,z.hit-dt);z.attack-=dt;let a=Math.atan2(player.y-z.y,player.x-z.x),d=dist(z,player);z.x+=Math.cos(a)*z.speed*dt/1000;z.y+=Math.sin(a)*z.speed*dt/1000;if(d<z.r+player.r+4&&z.attack<=0){hurt(z.damage);z.attack=650}}
+ // pickups
+ for(let i=pickups.length-1;i>=0;i--){let p=pickups[i];if(dist(p,player)<30){reserve[weapon]+=p.type==='ammo'?12:0;cash+=p.type==='cash'?15:0;pickups.splice(i,1);toast(p.type==='ammo'?'AMMO +12':'CASH +15')}}
+ // objective
+ objectiveTimer+=dt;
+ if(dist(player,objective)<65&&zombies.length<Math.max(5,night*2)){cash+=80+night*15;score+=500*night;toast('EXTRACTION SECURED');finishNight();return}
+ document.getElementById('mission').textContent=`NIGHT ${night} • EXTRACTION ${Math.round(dist(player,objective)/10)}m`;
+ updateHUD();
+ cam.x=Math.max(0,Math.min(world.w-W,player.x-W/2));cam.y=Math.max(0,Math.min(world.h-H,player.y-H/2));
+ shake*=.9;
+}
+
+function draw(){
+ ctx.clearRect(0,0,W,H);ctx.save();
+ if(mode==='menu'||mode==='shop'||mode==='over'){drawMenuBackdrop();ctx.restore();return}
+ let sx=(Math.random()-.5)*shake,sy=(Math.random()-.5)*shake;ctx.translate(-cam.x+sx,-cam.y+sy);
+ drawWorld();
+ ctx.restore();
+}
+function drawMenuBackdrop(){
+ let g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#080b10');g.addColorStop(1,'#14080a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<25;i++){ctx.fillStyle='#ffffff08';ctx.fillRect((i*97)%W,100+(i*47)%H,2,2)}
+}
+function drawWorld(){
+ // ground
+ ctx.fillStyle='#0b0e11';ctx.fillRect(0,0,world.w,world.h);
+ // road grid
+ ctx.fillStyle='#15191d';for(let x=0;x<world.w;x+=410)ctx.fillRect(x,0,90,world.h);for(let y=0;y<world.h;y+=500)ctx.fillRect(0,y,world.w,100);
+ // lane dashes
+ ctx.fillStyle='#b6a36a55';for(let x=45;x<world.w;x+=410)for(let y=20;y<world.h;y+=70)ctx.fillRect(x,y,4,28);
+ for(let y=50;y<world.h;y+=500)for(let x=10;x<world.w;x+=70)ctx.fillRect(x,y,28,4);
+ for(const d of decor){
+  if(d.type==='building'){ctx.fillStyle='#20252a';ctx.fillRect(d.x,d.y,d.w,d.h);ctx.strokeStyle='#343a42';ctx.strokeRect(d.x,d.y,d.w,d.h);ctx.fillStyle='#111419';for(let x=d.x+25;x<d.x+d.w-15;x+=48)for(let y=d.y+28;y<d.y+d.h-15;y+=52)ctx.fillRect(x,y,22,12)}
+  else if(d.type==='car'){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(d.a);ctx.fillStyle='#30353a';ctx.fillRect(-18,-8,36,16);ctx.fillStyle='#0a0b0d';ctx.fillRect(-10,-7,12,14);ctx.restore()}
+  else{ctx.fillStyle='#42474c';ctx.fillRect(d.x,d.y,7,7)}
+ }
+ // extraction
+ ctx.save();ctx.translate(objective.x,objective.y);ctx.strokeStyle='#ff424288';ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,42+Math.sin(performance.now()/250)*5,0,6.28);ctx.stroke();ctx.fillStyle='#ff3c3c22';ctx.beginPath();ctx.arc(0,0,34,0,6.28);ctx.fill();ctx.fillStyle='#dce2e8';ctx.fillRect(-30,-13,60,26);ctx.fillStyle='#a32c31';ctx.fillRect(-24,-9,48,18);ctx.fillStyle='#dfe5e9';ctx.fillRect(-17,-7,12,10);ctx.fillRect(5,-7,12,10);ctx.restore();
+ // pickups
+ for(const p of pickups){ctx.fillStyle='#ffc34d';ctx.beginPath();ctx.arc(p.x,p.y,7,0,6.28);ctx.fill();ctx.fillStyle='#111';ctx.font='bold 8px Arial';ctx.textAlign='center';ctx.fillText(p.type==='ammo'?'A':'$',p.x,p.y+3)}
+ // bullets
+ ctx.fillStyle='#ffd86a';for(const b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,3,0,6.28);ctx.fill()}
+ // zombies
+ for(const z of zombies){ctx.save();ctx.translate(z.x,z.y);let a=Math.atan2(player.y-z.y,player.x-z.x);ctx.rotate(a);ctx.fillStyle=z.type==='brute'?'#733438':z.type==='runner'?'#8f9c54':'#617b63';ctx.beginPath();ctx.arc(0,0,z.r,0,6.28);ctx.fill();ctx.fillStyle='#161916';ctx.fillRect(2,-z.r*.45,z.r*.6,z.r*.35);ctx.fillStyle='#d94141';ctx.fillRect(z.r*.2,-z.r*.35,3,3);ctx.restore()}
+ // player
+ ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.angle);ctx.fillStyle=invuln>0?'#fff':'#d7dce2';ctx.beginPath();ctx.arc(0,0,player.r,0,6.28);ctx.fill();ctx.fillStyle='#252a31';ctx.fillRect(0,-5,23,10);ctx.fillStyle='#c83238';ctx.fillRect(-8,-12,10,5);ctx.restore();
+ // particles
+ for(const p of particles){p.x+=p.vx*.016;p.y+=p.vy*.016;p.life-=16;ctx.globalAlpha=Math.max(0,p.life/500);ctx.fillStyle=p.type==='dash'?'#7ec8ff':'#c63a3f';ctx.fillRect(p.x,p.y,p.size,p.size)}ctx.globalAlpha=1;
+ for(let i=particles.length-1;i>=0;i--)if(particles[i].life<=0)particles.splice(i,1);
+}
+function loop(t){let dt=Math.min(40,t-last||16);last=t;update(dt);draw();raf=requestAnimationFrame(loop)}
+document.getElementById('best').textContent=stats.best;document.getElementById('totalKills').textContent=stats.total;
+loop(0);
+</script>
+</body></html>
